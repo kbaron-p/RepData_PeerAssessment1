@@ -1,25 +1,117 @@
 ---
-title: "Reproducible Research: Peer Assessment 1"
-output: 
-  html_document:
-    keep_md: true
+title: "reproducible_research_project1"
+author: "KBP"
+date: "16 czerwca 2017"
+output: md_document
 ---
 
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
 
-## Loading and preprocessing the data
+## 1. Data loading
+Load the data usinf read.csv()
+
+```{r load}
+activity <- read.csv("activity.csv")
+```
+
+## 2. Preprocess data
+First prepare dates value to be real date format (makes plotting easier)
+
+```{r data_prep}
+activity$date <- as.Date(as.character(activity$date), "%Y-%m-%d")
+```
+
+## 3. Ignore missing data
+### 3.1 Calculate steps taken each day
+```{r calculate_total_steps}
+sum_steps <- function(x){sum(x$steps, na.rm=TRUE)}
+steps_each_day <- sapply(split(activity, activity$date),sum_steps)
+steps_each_day
+```
+
+### 3.2 Plot histogram of of steps taken each day
+```{r hist_of_steps}
+hist(steps_each_day,main="Histogram of the total number of steps taken each day", xlab = "Number of steps taken per day")
+```
+
+### 3.3 Calculate mean of total steps taken per day
+```{r mean_of_steps}
+mean(steps_each_day)
+```
+
+### 3.4 Calculate median of total steps taken per day
+```{r median_of_steps}
+median(steps_each_day)
+```
+
+### 3.5 Average daily activity pattern - time series plot
+```{r time-series_plot}
+my_activity <- split(activity, activity$interval)
+my_means <- matrix(nrow=length(my_activity),ncol=2)
+for (i in 1:length(my_activity)){my_means[i,2]<-mean(my_activity[[i]]$steps, na.rm=TRUE)
+my_means[i,1]<-unique(my_activity[[i]]$interval)}
+plot(my_means, type="l", main="Averaged number of steps taken per interval", xlab="Interval", ylab="Number of steps")
+
+```
+
+### 3.6 Average daily activity pattern - interval with max number of steps
+```{r averag_max_numb_steps}
+my_means[which.max(my_means[,2]),1]
+```
 
 
+## 4. Impute missing data 
 
-## What is mean total number of steps taken per day?
+### 4.1 Calculate total number of NAs in steps column
+```{r sum_nas}
+sum(is.na(activity$steps))
+```
+
+### 4.2 Get rid of NAs in steps variable by switching it with mean of all the available values for this specific interval: 
+
+```{r impute_NAs}
+activity_fixed=activity
+for (j in 1:length(activity_fixed$steps)){if(is.na(activity_fixed$steps[j])) activity_fixed$steps[j]=my_means[which(my_means[,1]==activity_fixed$interval[j]),2]}
+head(activity_fixed)
+head(activity)
+
+```
+
+### 4.3 Plot histogram of steps taken each day
+
+```{r hist of steps per day}
+steps_each_day_fixed <- sapply(split(activity_fixed, activity_fixed$date),sum_steps)
+hist(steps_each_day_fixed,main="Histogram of the total number of steps taken each day \n for data with NA imputed", xlab = "Number of steps taken per day")
+```
 
 
+### 4.4 Mean and median number of steps taken each day
+```{r mean_and_median_of_steps}
+mean(steps_each_day_fixed)
+median(steps_each_day_fixed)
+```
 
-## What is the average daily activity pattern?
+### 4.5 Differences in activity patterns between weekdays and weekends
+Check whether day is a weekday or weekend (for Polish week day names)
+```{r weekdays_weekends}
+weekday_or_weekend <- function(x){if((weekdays(x)=="sobota") | (weekdays(x)=="niedziela")) "weekend" else "weekday"}
+activity_fixed$day_type <- factor(sapply(activity_fixed$date, weekday_or_weekend))
+activity_dayType <- split(activity_fixed, activity_fixed$day_type)
+my_activity_weekday <- split(activity_dayType[["weekday"]], activity_dayType[["weekday"]]$interval)
+my_activity_weekend <- split(activity_dayType[["weekend"]], activity_dayType[["weekend"]]$interval)
+my_means_weekday <- matrix(nrow=length(my_activity_weekday),ncol=2)
+for (i in 1:length(my_activity_weekday)){my_means_weekday[i,2]<-mean(my_activity_weekday[[i]]$steps, na.rm=TRUE)
+my_means_weekday[i,1]<-unique(my_activity_weekday[[i]]$interval)}
+my_means_weekend <- matrix(nrow=length(my_activity_weekend),ncol=2)
+for (i in 1:length(my_activity_weekend)){my_means_weekend[i,2]<-mean(my_activity_weekend[[i]]$steps, na.rm=TRUE)
+my_means_weekend[i,1]<-unique(my_activity_weekend[[i]]$interval)}
+ split.screen(c(2, 1))
+ screen(1)
+plot(my_means_weekday, type="l", main="Weekdays", xlab="",ylab="Number of steps")
+screen(2)
+plot(my_means_weekend, type="l", main="Weekend", xlab="Interval", ylab="Number of steps")
+close.screen(all = TRUE)
 
-
-
-## Imputing missing values
-
-
-
-## Are there differences in activity patterns between weekdays and weekends?
+```
